@@ -409,6 +409,14 @@ class TestWaitConditions(unittest.TestCase):
         self.assertEqual(r.wait(make_retry_state(8, 0)), 256)
         self.assertEqual(r.wait(make_retry_state(20, 0)), 1048576)
 
+    def test_exponential_with_zero_multiplier(self) -> None:
+        r = Retrying(wait=tenacity.wait_exponential(multiplier=0.0, max=60))
+        self.assertEqual(r.wait(make_retry_state(1025, 0)), 0.0)
+        r_int = Retrying(wait=tenacity.wait_exponential(multiplier=0, exp_base=2.0, max=60))
+        self.assertEqual(r_int.wait(make_retry_state(1025, 0)), 0.0)
+        r_min = Retrying(wait=tenacity.wait_exponential(multiplier=0, min=5, max=60))
+        self.assertEqual(r_min.wait(make_retry_state(1025, 0)), 5.0)
+
     def test_exponential_with_min_wait_andmax__wait(self) -> None:
         for min_, max_ in (
             (10, 100),
@@ -740,6 +748,12 @@ class TestWaitConditions(unittest.TestCase):
     def test_wait_exponential_jitter_initial_and_multiplier_raises(self) -> None:
         with self.assertRaises(ValueError):
             tenacity.wait_exponential_jitter(initial=5, multiplier=10)
+
+    def test_wait_exponential_jitter_zero_multiplier(self) -> None:
+        fn = tenacity.wait_exponential_jitter(multiplier=0.0, max=60, jitter=0)
+        self.assertEqual(fn(make_retry_state(1025, 0)), 0.0)
+        fn_min = tenacity.wait_exponential_jitter(multiplier=0.0, min=5, max=60, jitter=0)
+        self.assertEqual(fn_min(make_retry_state(1025, 0)), 5.0)
 
     def test_wait_retry_state_attributes(self) -> None:
         class ExtractCallState(Exception):

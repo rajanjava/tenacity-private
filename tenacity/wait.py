@@ -225,22 +225,25 @@ class wait_exponential(wait_base):
 
     @override
     def __call__(self, retry_state: "RetryCallState") -> float:
-        exponent = retry_state.attempt_number - 1
-        if (
-            self.multiplier > 0
-            and self.max > 0
-            and self.exp_base > 1
-            and math.isfinite(self.max)
-            and exponent
-            > math.log(self.max, self.exp_base)
-            - math.log(self.multiplier, self.exp_base)
-        ):
-            return max(max(0, self.min), self.max)
-        try:
-            exp = self.exp_base**exponent
-            result = self.multiplier * exp
-        except OverflowError:
-            return self.max
+        if self.multiplier == 0:
+            result = 0.0
+        else:
+            exponent = retry_state.attempt_number - 1
+            if (
+                self.multiplier > 0
+                and self.max > 0
+                and self.exp_base > 1
+                and math.isfinite(self.max)
+                and exponent
+                > math.log(self.max, self.exp_base)
+                - math.log(self.multiplier, self.exp_base)
+            ):
+                return max(max(0, self.min), self.max)
+            try:
+                exp = self.exp_base**exponent
+                result = self.multiplier * exp
+            except OverflowError:
+                return self.max
         return max(max(0, self.min), min(result, self.max))
 
 
@@ -319,9 +322,12 @@ class wait_exponential_jitter(wait_base):
     @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         jitter = random.uniform(0, self.jitter)
-        try:
-            exp = self.exp_base ** (retry_state.attempt_number - 1)
-            result = self.multiplier * exp + jitter
-        except OverflowError:
-            result = self.max
+        if self.multiplier == 0:
+            result = jitter
+        else:
+            try:
+                exp = self.exp_base ** (retry_state.attempt_number - 1)
+                result = self.multiplier * exp + jitter
+            except OverflowError:
+                result = self.max
         return max(max(0, self.min), min(result, self.max))
