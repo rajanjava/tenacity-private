@@ -45,6 +45,11 @@ Prior to the fix, both tests failed with `AssertionError: 60.0 != 0.0`.
 
 ---
 
+## Solution Approach
+1. **Diagnose Floating-Point Overflow with Zero Multiplier:** In `wait_exponential`, computing `self.multiplier * (self.exp_base ** exp)` evaluated `self.exp_base ** exp` first. For large retry counts, `2 ** 10000` raised `OverflowError` and triggered the `except OverflowError: return self.max` fallback—even when `multiplier == 0` (where the mathematical result must always be `0`).
+2. **Short-Circuit Zero Multiplier Before Exponentiation:** Added an explicit early guard checking if `self.multiplier == 0` (or evaluating safely) so zero multiplier immediately yields `max(self.min, 0)` without ever overflowing into `self.max`.
+3. **TDD & Regression Safety:** Added `test_exponential_with_zero_multiplier` in `tests/test_tenacity.py` verifying large attempt numbers return `0` (or `min`) instead of `max`.
+
 ## 4. Code Fix
 In `tenacity/wait.py`:
 1. In `wait_exponential.__call__`, added an explicit check:
